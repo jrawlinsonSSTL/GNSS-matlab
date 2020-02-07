@@ -1,4 +1,4 @@
-	Please note that this repo was forked from [danipascual](https://github.com/danipascual/GNSS-matlab)
+Please note that this repo was forked from [danipascual](https://github.com/danipascual/GNSS-matlab).
 
 # GNSS codes, signals and spectrum generation for Matlab
 
@@ -80,9 +80,10 @@ Real data captures can be used to test the functions. Get them [here](https://me
 #### \source
 
 + GNSScodegen.m: Generates GNSS unsampled codes.
-    + GPS: L1CA, L2CM, L2CL, L5I, L5Q.
+    + GPS: L1CA, L2CM, L2CL, L5I, L5Q, L1C (pilot only)
+    + QZSS: L1CA
     + Galileo: E1B, E1C, E5aI, E5aQ, E5bI, E5bQ.
-    + BeiDou-2: B1I.
+    + BeiDou-2: B1I, B1C (including data & pilot codes).
 
 + GNSSsecondarygen.m: Generates GNSS unsampled secondary codes
 	+ GPS: L5I, L5Q.
