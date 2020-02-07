@@ -1,4 +1,4 @@
-Please note that this repo was forked from [danipascual](https://github.com/danipascual/GNSS-matlab).
+Please note that this repo was forked from [danipascual](https://github.com/danipascual/GNSS-matlab). Beidou B1C, QZSS L1CA and GPS L1C (using CBOC rather than TMBOC) have been added by me.
 
 # GNSS codes, signals and spectrum generation for Matlab
 
