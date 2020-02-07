@@ -1,6 +1,8 @@
+	Please note that this repo was forked from [danipascual](https://github.com/danipascual/GNSS-matlab)
+
 # GNSS codes, signals and spectrum generation for Matlab
 
-All the contents were developed for the [passive remote sensing group (RSLab)](https://prs.upc.edu/) as a part of the [Remote Sensing Laboratory](http://www.tsc.upc.edu/en/research/rslab), a research line of the [CommmSensLab Group](http://www.tsc.upc.edu/en/research/commsenslab) at the [Signal Theory and Communications Department (TSC)](http://www.tsc.upc.edu/en) of the [Universitat Politècnica de Catalunya (UPC)](http://www.upc.edu/?set_language=en).
+All the contents were developed for the [passive remote sensing group (RSLab)](https://prs.upc.edu/) as a part of the [Remote Sensing Laboratory](http://www.tsc.upc.edu/en/research/rslab), a research line of the [CommmSensLab Group](http://www.tsc.upc.edu/en/research/commsenslab) at the [Signal Theory and Communications Department (TSC)](http://www.tsc.upc.edu/en) of the [Universitat PolitÃ¨cnica de Catalunya (UPC)](http://www.upc.edu/?set_language=en).
 
 The first version of this program was uploaded in the [IEEE Remote Sensing Code Library (RSCL)](https://rscl-grss.org/) with DOI: [10.21982/M8F59K](https://rscl-grss.org/coderecord.php?id=479) 
 
