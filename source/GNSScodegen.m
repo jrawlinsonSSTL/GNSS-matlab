@@ -3,8 +3,7 @@ function code = GNSScodegen(svnum, modulation,ld)
 %GNSScodegen Generates unsampled GNSS ranging code with values +/-1.
 %
 %   Inputs
-%       svnum --> PRN. GPS: [1-32], GALILEO: [1-50]. BeiDou [1-37].
-%                 Can be a vector.
+%       svnum --> PRN. GPS: [1-32], GALILEO: [1-50]. BeiDou [1-37]
 %       modulation --> GPS: L1CA, L2CM, L2CL, L5I, L5Q.
 %                      Galileo: E1B, E1C, E5aI, E5aQ, E5bI, E5bQ.
 %                      BeiDou: B1I.
@@ -28,11 +27,13 @@ function code = GNSScodegen(svnum, modulation,ld)
 %--------------------------------------------------------------------------
 % Version log (main changes)
 %   02/03/2017 --> Log started
-%   16/01/2019 --> svnum can now be a vector
+%   14/11/2019 --> Beidou B1C, QZSS L1C/A and GPS L1Cp added
+%   (Jonathan Rawlinson, SSTL)
 %--------------------------------------------------------------------------
 % Authors: Daniel Pascual (daniel.pascual [at] protonmail.com), 
 % Raul Onrubia (onrubia [at] tsc.upc.es), Scott Gleason and D. Akos.
 % Scott Gleason, and others
+% Modifications 14/11/2019 (Jonathan Rawlinson, SSTL)
 % License: GNU GPLv3
 %==========================================================================
 
@@ -61,60 +62,114 @@ function code = GNSScodegen(svnum, modulation,ld)
     switch(modulation)
         case 'L1CA'
             if ld == 0
-                for i=1:length(svnum)
-                    code(i,:) = codegen_L1CA(svnum(i));
-                end
+                code = codegen_L1CA(svnum);
             elseif ld == 1
                 codes = importdata('codes_L1CA.mat');
-                code = codes(:,svnum).';
+                code = codes(:,svnum)';
             end
+            
+        case 'L1Cp'
+            code = codegen_L1Cp(svnum);
+            
+        case 'B1Cp'
+            code = codegen_B1Cp(svnum);
+            
+        case 'B1Cps'
+            code = codegen_B1Cps(svnum);
+            
+        case 'B1Cd'
+            code = codegen_B1Cd(svnum);
+        
         case 'L2CM'
-            if ld == 0    
-                for i=1:length(svnum)                
-                    code(i,:) = codegen_L2CMCL(svnum(i),'CM');  
-                end
+            if ld == 0        
+                code = codegen_L2CMCL(svnum,'CM');  
             elseif ld == 1
                 codes = importdata('codes_L2CM.mat');
-                code = codes(:,svnum).';                
+                code = codes(:,svnum)';                
             end        
         case 'L2CL'
-            if ld == 0     
-                for i=1:length(svnum)                
-                    code(i,:) = codegen_L2CMCL(svnum(i),'CL');
-                end
+            if ld == 0        
+                code = codegen_L2CMCL(svnum,'CL');
             elseif ld == 1
                 codes = importdata('codes_L2CL.mat');
-                code = codes(:,svnum).';                    
+                code = codes(:,svnum)';                    
             end     
         case {'L5I','L5Q'}
-            if ld == 0  
-                for i=1:length(svnum) 
-                    code(i,:) = codegen_L5IQ(svnum(i),modulation);
-                end
+            if ld == 0        
+                code = codegen_L5IQ(svnum,modulation);
             elseif ld == 1
                 codes = importdata(['codes_' modulation '.mat']);
-                code = codes(:,svnum).'; 
+                code = codes(:,svnum)'; 
             end  
         case {'E5aI','E5aQ','E5bI','E5bQ', 'E1B', 'E1C'}
             if ld == 0  
-                for i=1:length(svnum)  
-                    code(i,:) = codegen_E1E5(svnum(i),modulation);
-                end
+                code = codegen_E1E5(svnum,modulation);
             elseif ld == 1
                 codes = importdata(['codes_' modulation '.mat']);
-                code = codes(:,svnum).';                 
+                code = codes(:,svnum)';                 
             end    
         case 'B1I'
             if ld == 0
-                for i=1:length(svnum)  
-                    code(i,:) = codegen_B1I(svnum(i));
-                end
+                code = codegen_B1I(svnum);
             elseif ld == 1
-                codes = importdata('codes_B1I.mat');
-                code = codes(:,svnum).';
+                code = importdata('codes_B1I.mat');
             end
+        case 'Q1CA'
+            code = codegen_Q1CA(svnum);
     end
 end
+
+
+function code = codegen_Q1CA(svnum)
+%==========================================================================
+% 
+%--------------------------------------------------------------------------
+% Obtained from Scott Gleason's book "GNSS Applications and Methods"
+% (ISBN-13: 978-1596933293)
+% Copyright 2000 D. Akos
+% License: GNU GPL
+% Modified for QZSS, Jonathan Rawlinson, SSTL, 2019
+%==========================================================================
+    % QZSS L1 ICD: https://qzss.go.jp/en/technical/download/pdf/ps-is-qzss/is-qzss-pnt-003.pdf?t=1561709013113
+    % the g2s vector holds the appropriate shift of the g2 code to generate
+    % the C/A code (ex for SV#19 - use a G2 shift of g2s(19)=471) 
+    
+    g2s = [339; 208; 711; 189; 263; 537; 663; 942; 173; 900];
+
+    g2shift = g2s(svnum-192,1);
+
+    % ****** Generate G1 code ******
+    % load shift register
+    reg = -1*ones(1,10);
+    g1 = zeros(1,1023);
+    for i=1:1023
+        g1(i) = reg(10);
+        save1 = reg(3)*reg(10);
+        reg(1, 2:10) = reg(1:1:9);
+        reg(1) = save1;
+    end
+
+    % ****** Generate G2code ******
+    % load shift register
+    reg = -1*ones(1,10);
+    for i=1:1023
+        g2(i) = reg(10);
+        save2 = reg(2)*reg(3)*reg(6)*reg(8)*reg(9)*reg(10);
+        reg(1, 2:10) = reg(1:1:9);
+        reg(1) = save2;
+    end
+
+    % ****** Shift G2 code ******
+    g2tmp(1, 1:g2shift)      = g2(1, 1023-g2shift+1:1023);
+    g2tmp(1, g2shift+1:1023) = g2(1, 1:1023-g2shift);
+    g2 = g2tmp;
+    
+    % ****** Form single sample C/A code by multiplying G1 and G2 ******
+    code = g1 .* g2;
+    
+end
+
+
 
 function code = codegen_L1CA(svnum)
 %==========================================================================
@@ -163,6 +218,573 @@ function code = codegen_L1CA(svnum)
 
     % ****** Form single sample C/A code by multiplying G1 and G2 ******
     code = g1 .* g2;
+end
+
+function code = codegen_L1Cp(svnum)
+    % Fairly simple L1Cp code generator
+    % Tips from below:
+    % IS-GPS-800D
+    % https://github.com/pmonta/GNSS-DSP-tools
+    
+    %==========================================================================
+    % Fairly simple L1Cp code generator
+    %--------------------------------------------------------------------------
+    % Copyright 2019 J. Rawlinson SSTL
+    % License: GNU GPLv3
+    %==========================================================================
+
+    l1cp_params = [
+        [5111,412];
+        [5109,161];
+        [5108,1];
+        [5106,303];
+        [5103,207];
+        [5101,4971];
+        [5100,4496];
+        [5098,5];
+        [5095,4557];
+        [5094,485];
+        [5093,253];
+        [5091,4676];
+        [5090,1];
+        [5081,66];
+        [5080,4485];
+        [5069,282];
+        [5068,193];
+        [5054,5211];
+        [5044,729];
+        [5027,4848];
+        [5026,982];
+        [5014,5955];
+        [5004,9805];
+        [4980,670];
+        [4915,464];
+        [4909,29];
+        [4893,429];
+        [4885,394];
+        [4832,616];
+        [4824,9457];
+        [4591,4429];
+        [3706,4771];
+        [5092,365];
+        [4986,9705];
+        [4965,9489];
+        [4920,4193];
+        [4917,9947];
+        [4858,824];
+        [4847,864];
+        [4790,347];
+        [4770,677];
+        [4318,6544];
+        [4126,6312];
+        [3961,9804];
+        [3790,278];
+        [4911,9461];
+        [4881,444];
+        [4827,4839];
+        [4795,4144];
+        [4789,9875];
+        [4725,197];
+        [4675,1156];
+        [4539,4674];
+        [4535,10035];
+        [4458,4504];
+        [4197,5];
+        [4096,9937];
+        [3484,430];
+        [3481,5];
+        [3393,355];
+        [3175,909];
+        [2360,1622];
+        [1852,6284];
+        [5065,9429];
+        [5063,77];
+        [5055,932];
+        [5012,5973];
+        [4981,377];
+        [4952,10000];
+        [4934,951];
+        [4932,6212];
+        [4786,686];
+        [4762,9352];
+        [4640,5999];
+        [4601,9912];
+        [4563,9620];
+        [4388,635];
+        [3820,4951];
+        [3687,5453];
+        [5052,4658];
+        [5051,4800];
+        [5047,59];
+        [5039,318];
+        [5015,571];
+        [5005,565];
+        [4984,9947];
+        [4975,4654];
+        [4974,148];
+        [4972,3929];
+        [4962,293];
+        [4913,178];
+        [4907,10142];
+        [4903,9683];
+        [4833,137];
+        [4778,565];
+        [4721,35];
+        [4661,5949];
+        [4660,2];
+        [4655,5982];
+        [4623,825];
+        [4590,9614];
+        [4548,9790];
+        [4461,5613];
+        [4442,764];
+        [4347,660];
+        [4259,4870];
+        [4256,4950];
+        [4166,4881];
+        [4155,1151];
+        [4109,9977];
+        [4100,5122];
+        [4023,10074];
+        [3998,4832];
+        [3979,77];
+        [3903,4698];
+        [3568,1002];
+        [5088,5549];
+        [5050,9606];
+        [5020,9228];
+        [4990,604];
+        [4982,4678];
+        [4966,4854];
+        [4949,4122];
+        [4947,9471];
+        [4937,5026];
+        [4935,272];
+        [4906,1027];
+        [4901,317];
+        [4872,691];
+        [4865,509];
+        [4863,9708];
+        [4818,5033];
+        [4785,9938];
+        [4781,4314];
+        [4776,10140];
+        [4775,4790];
+        [4754,9823];
+        [4696,6093];
+        [4690,469];
+        [4658,1215];
+        [4607,799];
+        [4599,756];
+        [4596,9994];
+        [4530,4843];
+        [4524,5271];
+        [4451,9661];
+        [4441,6255];
+        [4396,5203];
+        [4340,203];
+        [4335,10070];
+        [4296,30];
+        [4267,103];
+        [4168,5692];
+        [4149,32];
+        [4097,9826];
+        [4061,76];
+        [3989,59];
+        [3966,6831];
+        [3789,958];
+        [3775,1471];
+        [3622,10070];
+        [3523,553];
+        [3515,5487];
+        [3492,55];
+        [3345,208];
+        [3235,645];
+        [3169,5268];
+        [3157,1873];
+        [3082,427];
+        [3072,367];
+        [3032,1404];
+        [3030,5652];
+        [4582,5];
+        [4595,368];
+        [4068,451];
+        [4871,9595];
+        [4514,1030];
+        [4439,1324];
+        [4122,692];
+        [4948,9819];
+        [4774,4520];
+        [3923,9911];
+        [3411,278];
+        [4745,642];
+        [4195,6330];
+        [4897,5508];
+        [3047,1872];
+        [4185,5445];
+        [4354,10131];
+        [5077,422];
+        [4042,4918];
+        [2111,787];
+        [4311,9864];
+        [5024,9753];
+        [4352,9859];
+        [4678,328];
+        [5034,1];
+        [5085,4733];
+        [3646,164];
+        [4868,135];
+        [3668,174];
+        [4211,132];
+        [2883,538];
+        [2850,176];
+        [2815,198];
+        [2542,595];
+        [2492,574];
+        [2376,321];
+        [2036,596];
+        [1920,491];
+        ];
+    
+    % Generate legendre sequence
+    N = 10223;
+    L = qrseq(N);
+    L(L == -1) = 0;
+    
+    % Generate Weil sequence
+    parm = l1cp_params(svnum, :);
+    w = parm(1);
+    p = parm(2);
+    W = NaN(size(L));
+    for k = 0:N-1
+        W(k+1) = xor(L(k+1), L(mod(k + w, N) + 1));
+    end
+    
+    % Insert expansion sequence at defined location
+    expansion = [0 1 1 0 1 0 0];
+    code = cat(2, W(1:p-1), expansion, W(p:N));
+    
+    % Map code outputs
+    code(code == 0) = -1;
+    
+end
+
+function code = codegen_B1Cd(svnum)
+    % Fairly simple BICd code generator
+    % Details from BDS SIS ICD B1C v1.0
+    
+    %==========================================================================
+    % Fairly simple BICd code generator
+    %--------------------------------------------------------------------------
+    % Copyright 2019 J. Rawlinson SSTL
+    % License: GNU GPLv3
+    %==========================================================================
+    
+    % Define phase difference and truncation point for each PRN
+    b1cd_params = [
+        [2678,699];  
+        [4802,694];  
+        [958,7318]; 
+        [859,2127];
+        [3843,715];  
+        [2232,6682];
+        [124,7850]; 
+        [4352,5495];
+        [1816,1162];
+        [1126,7682]; 
+        [1860,6792];
+        [4800,9973];
+        [2267,6596];
+        [424,2092]; 
+        [4192,19];  
+        [4333,10151];
+        [2656,6297]; 
+        [4148,5766]; 
+        [243,2359]; 
+        [1330,7136];
+        [1593,1706]; 
+        [1470,2128]; 
+        [882,6827];  
+        [3202,693];
+        [5095,9729];
+        [2546,1620]; 
+        [1733,6805]; 
+        [4795,534];
+        [4577,712];  
+        [1627,1929];
+        [3638,5355]; 
+        [2553,6139];
+        [3646,6339]; 
+        [1087,1470]; 
+        [1843,6867]; 
+        [216,7851];
+        [2245,1162]; 
+        [726,7659]; 
+        [1966,1156]; 
+        [670,2672];
+        [4130,6043];
+        [53,2862]; 
+        [4830,180]; 
+        [182,2663];
+        [2181,6940]; 
+        [2006,1645];
+        [1080,1582]; 
+        [2288,951];
+        [2027,6878]; 
+        [271,7701];  
+        [915,1823];
+        [497,2391];
+        [139,2606];  
+        [3693,822]; 
+        [2054,6403]; 
+        [4342,239];
+        [3342,442]; 
+        [2592,6769];
+        [1007,2560]; 
+        [310,2502];
+        [4203,5072]; 
+        [455,7268]; 
+        [4318,341];
+        ];
+    % wN is the Wiel length
+    wN = 10243;
+    % N is the output code length
+    N  = 10230;
+    % Generate legendre sequence
+    L  = qrseq(wN);
+    % We want 1 & -1 sequence
+    L(L == -1) = 0;
+    % Load correct parm and extract w and p
+    parm = b1cd_params(svnum, :);
+    w = parm(1);
+    p = parm(2);
+    % Pre define Wiel array
+    W = NaN(size(L));
+    for k = 0:wN-1
+        % Calculate Wiel code symbol by symbol
+        W(k+1) = xor(L(k+1), L(mod(k + w, wN) + 1));
+    end
+    % predefine output code array
+    code = zeros(1, N);
+    for n = 0:N-1
+        % Calculate the pointer to the Wiel code
+        w_ind = mod((n + p - 1), wN);
+        code(n+1) = W(w_ind+1);
+    end
+    
+    code(code == 0) = -1;
+end
+
+function code = codegen_B1Cp(svnum)
+    % Fairly simple BICp code generator
+    % Details from BDS SIS ICD B1C v1.0
+    
+    %==========================================================================
+    % Fairly simple BICp code generator
+    %--------------------------------------------------------------------------
+    % Copyright 2019 J. Rawlinson SSTL
+    % License: GNU GPLv3
+    %==========================================================================
+    
+    % Define phase difference and truncation point for each PRN
+    b1cp_params = [
+        [796,7575];     
+        [156,2369];     
+        [4198,5688];    
+        [3941,539];
+        [1374,2270];    
+        [1338,7306];    
+        [1833,6457];    
+        [2521,6254];
+        [3175,5644];   
+        [168,7119];    
+        [2715,1402];   
+        [4408,5557];
+        [3160,5764];   
+        [2796,1073];   
+        [459,7001];    
+        [3594,5910];
+        [4813,10060];  
+        [586,2710];   
+        [1428,1546];  
+        [2371,6887];
+        [2285,1883];  
+        [3377,5613]; 
+        [4965,5062];  
+        [3779,1038];
+        [4547,10170]; 
+        [1646,6484]; 
+        [1430,1718]; 
+        [607,2535];
+        [2118,1158];  
+        [4709,526];  
+        [1149,7331]; 
+        [3283,5844];
+        [2473,6423];  
+        [1006,6968];  
+        [3670,1280]; 
+        [1817,1838];
+        [771,1989];   
+        [2173,6468]; 
+        [740,2091];  
+        [1433,1581];
+        [2458,1453];  
+        [3459,6252];  
+        [2155,7122];  
+        [1205,7711];
+        [413,7216];  
+        [874,2113];  
+        [2463,1095]; 
+        [1106,1628];
+        [1590,1713];  
+        [3873,6102]; 
+        [4026,6123]; 
+        [4272,6070];
+        [3556,1115]; 
+        [128,8047];  
+        [1200,6795]; 
+        [130,2575];
+        [4494,53];   
+        [1871,1729]; 
+        [3073,6388]; 
+        [4386,682];
+        [4098,5565];  
+        [1923,7160]; 
+        [1176,2277];
+        ];
+    % wN is the Wiel length
+    wN = 10243;
+    % N is the output code length
+    N  = 10230;
+    % Generate legendre sequence
+    L  = qrseq(wN);
+    % We want 1 & -1 sequence
+    L(L == -1) = 0;
+    % Load correct parm and extract w and p
+    parm = b1cp_params(svnum, :);
+    w = parm(1);
+    p = parm(2);
+    % Pre define Wiel array
+    W = NaN(size(L));
+    for k = 0:wN-1
+        % Calculate Wiel code symbol by symbol
+        W(k+1) = xor(L(k+1), L(mod(k + w, wN) + 1));
+    end
+    % predefine output code array
+    code = zeros(1, N);
+    for n = 0:N-1
+        % Calculate the pointer to the Wiel code
+        w_ind = mod((n + p - 1), wN);
+        code(n+1) = W(w_ind+1);
+    end
+    
+    code(code == 0) = -1;
+end
+
+function code = codegen_B1Cps(svnum)
+    % Fairly simple BICp code generator
+    % Details from BDS SIS ICD B1C v1.0
+    
+    %==================================================.========================
+    % Fairly simple BICp code generator
+    %--------------------------------------------------------------------------
+    % Copyright 2019 J. Rawlinson SSTL
+    % License: GNU GPL
+    %==========================================================================
+    
+    % Define phase difference and truncation point for each PRN
+    b1cps_params = [
+        [269,1889];  
+        [1448,1268]; 
+        [1028,1593]; 
+        [1324,1186];
+        [822,1239];  
+        [5,1930];  
+        [155,176];  
+        [458,1696];
+        [310,26];   
+        [959,1344];  
+        [1238,1271]; 
+        [1180,1182];
+        [1288,1381];
+        [334,1604]; 
+        [885,1333];  
+        [1362,1185];
+        [181,31];   
+        [1648,704]; 
+        [838,1190]; 
+        [313,1646];
+        [750,1385];
+        [225,113];  
+        [1477,860];  
+        [309,1656];
+        [108,1921];  
+        [1457,1173]; 
+        [149,1928];  
+        [322,57];
+        [271,150];  
+        [576,1214];
+        [1103,1148]; 
+        [450,1458];
+        [399,1519];  
+        [241,1635]; 
+        [1045,1257];  
+        [164,1687];
+        [513,1382];  
+        [687,1514]; 
+        [422,1];   
+        [303,1583];
+        [324,1806]; 
+        [495,1664];  
+        [725,1338]; 
+        [780,1111];
+        [367,1706]; 
+        [882,1543];  
+        [631,1813];  
+        [37,228];
+        [647,2871];  
+        [1043,2884]; 
+        [24,1823];  
+        [120,75];
+        [134,11];    
+        [136,63];   
+        [158,1937];
+        [214,22];
+        [335,1768];  
+        [340,1526];  
+        [661,1402]; 
+        [889,1445];
+        [929,1680];  
+        [1002,1290]; 
+        [1149,1245];
+        ];
+    % wN is the Wiel length
+    wN = 3607;
+    % N is the output code length
+    N  = 1800;
+    % Generate legendre sequence
+    L  = qrseq(wN);
+    % We want 1 & -1 sequence
+    L(L == -1) = 0;
+    % Load correct parm and extract w and p
+    parm = b1cps_params(svnum, :);
+    w = parm(1);
+    p = parm(2);
+    % Pre define Wiel array
+    W = NaN(size(L));
+    for k = 0:wN-1
+        % Calculate Wiel code symbol by symbol
+        W(k+1) = xor(L(k+1), L(mod(k + w, wN) + 1));
+    end
+    % predefine output code array
+    code = zeros(1, N);
+    for n = 0:N-1
+        % Calculate the pointer to the Wiel code
+        w_ind = mod((n + p - 1), wN);
+        code(n+1) = W(w_ind+1);
+    end
+    
+    code(code == 0) = -1;
 end
 
 function code = codegen_L5IQ(sv,modulation)
